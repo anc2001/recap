@@ -53,4 +53,4 @@ for i, resp in enumerate(answers):
                 "Please modify the prompt and try again.")
         if artifact.type == generation.ARTIFACT_IMAGE:
             img = Image.open(io.BytesIO(artifact.binary))
-            img.save(str(artifact.seed)+ f"_{i}.png") # Save our generated images with their seed number as the filename.
+            img.save(f"../data/generated_images/{str(artifact.seed)}_{i}.png") # Save our generated images with their seed number as the filename.
