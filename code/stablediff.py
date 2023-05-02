@@ -1,7 +1,7 @@
-# https://platform.stability.ai/docs/getting-started/python-sdk
-# python -m stability_sdk -W 512 -H 512 "A stunning house."
 import os
 import io
+import time
+import argparse
 import warnings
 from PIL import Image
 from stability_sdk import client
@@ -10,47 +10,60 @@ import stability_sdk.interfaces.gooseai.generation.generation_pb2 as generation
 with open("secret.txt", 'r') as f:
 	key = f.readline().strip()
 
-print(key)
+# https://platform.stability.ai/docs/getting-started/python-sdk
 os.environ['STABILITY_HOST'] = 'grpc.stability.ai:443'
 os.environ['STABILITY_KEY'] = key 
 
-# Set up our connection to the API.
-stability_api = client.StabilityInference(
-    key=os.environ['STABILITY_KEY'], # API Key reference.
-    verbose=True, # Print debug messages.
-    engine="stable-diffusion-xl-beta-v2-2-2", # Set the engine to use for generation.
-    # Available engines: stable-diffusion-v1 stable-diffusion-v1-5 stable-diffusion-512-v2-0 stable-diffusion-768-v2-0
-    # stable-diffusion-512-v2-1 stable-diffusion-768-v2-1 stable-diffusion-xl-beta-v2-2-2 stable-inpainting-v1-0 stable-inpainting-512-v2-0
-)
+def main(flags):
+    stability_api = client.StabilityInference(
+        key=os.environ['STABILITY_KEY'],
+        verbose=True,
+        engine="stable-diffusion-xl-beta-v2-2-2",
+    )
+
+    # https://github.com/Stability-AI/api-interfaces/blob/main/src/proto/generation.proto
+    generate_params = { 
+        "seed" : 2952, 
+        "steps" : 30,
+        "cfg_scale" : 8.0,
+        "width" : 512,
+        "height" : 512, 
+        "samples" : 2,
+        "sampler" : generation.SAMPLER_K_DPMPP_2M
+    }
+
+    # TODO link up with Adrian's Dataset code using flags.flickr, flags.coco (or maybe change flag)
+    prompts = ["a meteor shower over a desert landscape, impressionistic painting, oil painting", "a beautiful woman with constellations in her hair, moon themed, artemis, artstation, detailed"]
+
+    # For each prompt, generate images and save them.
+    path = f"../data/generated_images/{flags.dataset}/"
+    os.makedirs(path, exist_ok=True)
+    for p_id, prompt in enumerate(prompts):
+        responses = stability_api.generate(
+            prompt=prompt,
+            **generate_params
+        )
+
+        # code from tutorial to save images
+        for i, resp in enumerate(responses):
+            for artifact in resp.artifacts:
+                if artifact.finish_reason == generation.FILTER:
+                    warnings.warn(
+                        "Your request activated the API's safety filters and could not be processed."
+                        "Please modify the prompt and try again.")
+                if artifact.type == generation.ARTIFACT_IMAGE:
+                    img = Image.open(io.BytesIO(artifact.binary))
+                    img.save(path + f"prompt{p_id}_{i}.png") 
 
 
-# Set up our initial generation parameters.
-# https://github.com/Stability-AI/api-interfaces/blob/main/src/proto/generation.proto
-answers = stability_api.generate(
-    prompt="expansive landscape rolling greens with blue daisies and weeping willow trees under a blue alien sky, artstation, masterful, ghibli",
-    seed=2952, # If a seed is provided, the resulting generated image will be deterministic.
-                    # What this means is that as long as all generation parameters remain the same, you can always recall the same image simply by generating it again.
-                    # Note: This isn't quite the case for CLIP Guided generations, which we tackle in the CLIP Guidance documentation.
-    steps=30, # Amount of inference steps performed on image generation. Defaults to 30.
-    cfg_scale=8.0, # Influences how strongly your generation is guided to match your prompt.
-                   # Setting this value higher increases the strength in which it tries to match your prompt.
-                   # Defaults to 7.0 if not specified.
-    width=512, # Generation width, defaults to 512 if not included.
-    height=512, # Generation height, defaults to 512 if not included.
-    samples=3, # Number of images to generate, defaults to 1 if not included.
-    sampler=generation.SAMPLER_K_DPMPP_2M # Choose which sampler we want to denoise our generation with.
-                                                 # Defaults to k_dpmpp_2m if not specified. Clip Guidance only supports ancestral samplers.
-                                                 # (Available Samplers: ddim, plms, k_euler, k_euler_ancestral, k_heun, k_dpm_2, k_dpm_2_ancestral, k_dpmpp_2s_ancestral, k_lms, k_dpmpp_2m, k_dpmpp_sde)
-)
+if __name__ == "__main__":
+    tick = time.time()
+    
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dataset", choices=["flickr", "coco"], required=True)
+    flags = parser.parse_args()
+  
+    main(flags)
 
-# Set up our warning to print to the console if the adult content classifier is tripped.
-# If adult content classifier is not tripped, save generated images.
-for i, resp in enumerate(answers):
-    for artifact in resp.artifacts:
-        if artifact.finish_reason == generation.FILTER:
-            warnings.warn(
-                "Your request activated the API's safety filters and could not be processed."
-                "Please modify the prompt and try again.")
-        if artifact.type == generation.ARTIFACT_IMAGE:
-            img = Image.open(io.BytesIO(artifact.binary))
-            img.save(f"../data/generated_images/{str(artifact.seed)}_{i}.png") # Save our generated images with their seed number as the filename.
+    tock = time.time()
+    print(tock - tick, "seconds")
