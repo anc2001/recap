@@ -1,0 +1,14 @@
+name: recap
+channels:
+  - conda-forge
+  - pytorch
+  - defaults
+dependencies:
+  - numpy
+  - matplotlib
+  - pytorch
+  - torchvision 
+  - torchmetrics
+  - tqdm
+  - pyyaml
+  - ignite 
