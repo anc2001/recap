@@ -3,6 +3,7 @@ import io
 import time
 import argparse
 import warnings
+
 from PIL import Image
 from stability_sdk import client
 import stability_sdk.interfaces.gooseai.generation.generation_pb2 as generation
@@ -15,25 +16,27 @@ os.environ['STABILITY_HOST'] = 'grpc.stability.ai:443'
 os.environ['STABILITY_KEY'] = key 
 
 def main(flags):
+    # Make the image size the same as the dataset, retrieve prompts
+    if flags.dataset == "flickr":
+        img_size = None # TODO
+        prompts = [] # TODO
+
+    # set up stability api connection 
+    # https://github.com/Stability-AI/api-interfaces/blob/main/src/proto/generation.proto
     stability_api = client.StabilityInference(
         key=os.environ['STABILITY_KEY'],
         verbose=True,
         engine="stable-diffusion-xl-beta-v2-2-2",
     )
-
-    # https://github.com/Stability-AI/api-interfaces/blob/main/src/proto/generation.proto
     generate_params = { 
         "seed" : 2952, 
         "steps" : 30,
         "cfg_scale" : 8.0,
-        "width" : 512,
-        "height" : 512, 
+        "width" : img_size,
+        "height" : img_size, 
         "samples" : 2,
         "sampler" : generation.SAMPLER_K_DPMPP_2M
     }
-
-    # TODO link up with Adrian's Dataset code using flags.flickr, flags.coco (or maybe change flag)
-    prompts = ["a meteor shower over a desert landscape, impressionistic painting, oil painting", "a beautiful woman with constellations in her hair, moon themed, artemis, artstation, detailed"]
 
     # For each prompt, generate images and save them.
     path = f"../data/generated_images/{flags.dataset}/"
@@ -60,7 +63,7 @@ if __name__ == "__main__":
     tick = time.time()
     
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", choices=["flickr", "coco"], required=True)
+    parser.add_argument("--dataset", choices=["flickr"], required=True)
     flags = parser.parse_args()
   
     main(flags)
