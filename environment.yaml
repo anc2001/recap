@@ -5,6 +5,7 @@ channels:
   - defaults
 dependencies:
   - numpy
+  - pandas
   - matplotlib
   - pytorch
   - torchvision 
@@ -12,3 +13,5 @@ dependencies:
   - tqdm
   - pyyaml
   - ignite 
+  - pip:
+    - stability-sdk
