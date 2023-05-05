@@ -2,23 +2,24 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import torch
 from torch.utils.data import Dataset, DataLoader
+from torchvision.io import read_image
 import os
 from PIL import Image
 import numpy as np
 
 class FlickrDataset(Dataset):
-    def __init__(self, base_filepath : str):
+    def __init__(self, base_filepath, transform = None):
         annotation_filepath = os.path.join(base_filepath, "Flickr8k_text")
         expert = pd.read_csv(
             os.path.join(annotation_filepath, "ExpertAnnotations.txt"),
             sep='\t',
             header=None
         )
-        crowd = pd.read_csv(
-            os.path.join(annotation_filepath, "CrowdFlowerAnnotations.txt"),
-            sep='\t',
-            header=None
-        )
+        # crowd = pd.read_csv(
+        #     os.path.join(annotation_filepath, "CrowdFlowerAnnotations.txt"),
+        #     sep='\t',
+        #     header=None
+        # )
         annotations = pd.read_csv(
             os.path.join(annotation_filepath, "Flickr8k.token.txt"),
             sep='\t',
@@ -26,19 +27,26 @@ class FlickrDataset(Dataset):
         )
 
         expert['score'] = expert[[2, 3, 4]].mean(axis=1) / 4
-        expert.drop(columns=[2, 3, 4])
-        crowd['score'] = crowd[2]
-        crowd.drop(columns=[2, 3, 4])
+        expert = expert.drop(columns=[2, 3, 4])
+        # crowd['score'] = crowd[2]
+        # crowd = crowd.drop(columns=[2, 3, 4])
 
-        human_annotations = pd.concat([crowd, expert])
-        human_annotations.sort_values('score').drop_duplicates(subset=[0, 1], keep='last')
+        # human_annotations = pd.concat([crowd, expert])
+        # human_annotations.sort_values('score').drop_duplicates(subset=[0, 1], keep='last')
 
         self.img_folder = os.path.join(base_filepath, "Flicker8k_Dataset")
-        self.img_filepaths = list(human_annotations[0])
-        self.caption_ids = list(human_annotations[1])
-        self.human_scores = list(human_annotations[2])
+        self.generated_img_folder = os.path.join(base_filepath, "generated_images")
+        self.transform = transform
         self.annotations = dict(zip(annotations[0], annotations[1]))
 
+        # self.img_filepaths = list(human_annotations[0])
+        # self.caption_ids = list(human_annotations[1])
+        # self.human_scores = list(human_annotations[2])
+        
+        self.img_filepaths = list(expert[0])
+        self.caption_ids = list(expert[1])
+        self.human_scores = list(expert[2])
+        
     def __len__(self):
         return len(self.img_filepaths)
 
@@ -47,6 +55,14 @@ class FlickrDataset(Dataset):
         caption_id = self.caption_ids[idx]
         human_score = self.human_scores[idx]
         caption = self.annotations[caption_id]
-        img = np.asarray(Image.open(os.path.join(self.img_folder, img_filepath)))
+        img = read_image(os.path.join(self.img_folder, img_filepath))
+        if self.transform:
+            img = self.transform(img)
+
+        # generated_img = read_image(os.path.join(self.generated_img_folder, caption_id))
+        # if self.transform:
+        #     img = self.transform(img)
 
         return img, caption, human_score
+
+dataset = FlickrDataset("/Users/adrianchang/CS/CS2952N/recap/data")

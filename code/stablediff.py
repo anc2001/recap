@@ -7,6 +7,8 @@ import warnings
 from PIL import Image
 from stability_sdk import client
 import stability_sdk.interfaces.gooseai.generation.generation_pb2 as generation
+from torchvision import transforms
+from dataset import FlickrDataset
 
 with open("secret.txt", 'r') as f:
 	key = f.readline().strip()
@@ -18,8 +20,10 @@ os.environ['STABILITY_KEY'] = key
 def main(flags):
     # Make the image size the same as the dataset, retrieve prompts
     if flags.dataset == "flickr":
-        img_size = None # TODO
-        prompts = [] # TODO
+        img_size = 256 
+        transform = transforms.Resize([img_size, img_size])
+        dataset = FlickrDataset("/Users/adrianchang/CS/CS2952N/recap/data", transform)
+        prompts = dataset.annotations
 
     # set up stability api connection 
     # https://github.com/Stability-AI/api-interfaces/blob/main/src/proto/generation.proto
@@ -39,9 +43,9 @@ def main(flags):
     }
 
     # For each prompt, generate images and save them.
-    path = f"../data/generated_images/{flags.dataset}/"
+    path = f"/Users/adrianchang/CS/CS2952N/recap/data/generated_images/{flags.dataset}/"
     os.makedirs(path, exist_ok=True)
-    for p_id, prompt in enumerate(prompts):
+    for p_id, prompt in prompts.items():
         responses = stability_api.generate(
             prompt=prompt,
             **generate_params
@@ -56,7 +60,7 @@ def main(flags):
                         "Please modify the prompt and try again.")
                 if artifact.type == generation.ARTIFACT_IMAGE:
                     img = Image.open(io.BytesIO(artifact.binary))
-                    img.save(path + f"prompt{p_id}_{i}.png") 
+                    img.save(path + f"prompt_{p_id}_{i}.png") 
 
 
 if __name__ == "__main__":
