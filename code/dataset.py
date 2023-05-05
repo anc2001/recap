@@ -6,6 +6,7 @@ from torchvision.io import read_image
 import os
 from PIL import Image
 import numpy as np
+import pickle as pkl
 
 class FlickrDataset(Dataset):
     def __init__(self, base_filepath, transform = None):
@@ -46,6 +47,11 @@ class FlickrDataset(Dataset):
         self.img_filepaths = list(expert[0])
         self.caption_ids = list(expert[1])
         self.human_scores = list(expert['score'])
+
+        with open("../data/splits.pkl", 'rb') as handle:
+            splits = pkl.load(handle)
+        
+        self.splits = splits
         
     def __len__(self):
         return len(self.img_filepaths)
@@ -65,4 +71,3 @@ class FlickrDataset(Dataset):
 
         return img, caption, human_score
 
-# dataset = FlickrDataset("/Users/adrianchang/CS/CS2952N/recap/data")

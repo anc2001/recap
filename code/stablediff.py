@@ -4,12 +4,12 @@ import time
 import argparse
 import warnings
 
+from tqdm import tqdm
 from PIL import Image
 from diffusers import StableDiffusionPipeline
 import torch
 from torchvision import transforms
 from dataset import FlickrDataset
-
 
 def main(flags):
     # Make the image size the same as the dataset, retrieve prompts
@@ -17,19 +17,26 @@ def main(flags):
         img_size = 256 
         transform = transforms.Resize([img_size, img_size])
         dataset = FlickrDataset("../data", transform)
-        prompts = dataset.annotations
+        caption_ids = dataset.splits[0]
+        # caption_ids = list(set(dataset.caption_ids))
     
     model_id = "stabilityai/stable-diffusion-2"
 
     pipe = StableDiffusionPipeline.from_pretrained(model_id, torch_dtype=torch.float16)
     pipe = pipe.to("cuda")
 
-    num_imgs = 4
-    for p_id, prompt in prompts.items():
+    num_imgs = 3
+    for caption_id in tqdm(caption_ids):
+        prompt = dataset.annotations[caption_id]
         for i in range(num_imgs):
-            generator = torch.Generator("cuda").manual_seed(i)
-            image = pipe(prompt=prompt, generator=generator).images[0]
-            image.save(f"../data/generated_images/{p_id}_{i}.png")
+            filepath = f"../data/generated_images/{caption_id}_{i}.png"
+            print(filepath)
+            if not os.path.isfile(filepath):
+                generator = torch.Generator("cuda").manual_seed(i)
+                image = pipe(prompt=prompt, generator=generator, num_inference_steps=50).images[0]
+                image.save(filepath)
+            else:
+                print(f"{filepath} exists -> skipped!")
 
 if __name__ == "__main__":
     tick = time.time()
