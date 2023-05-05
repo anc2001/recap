@@ -5,17 +5,11 @@ import argparse
 import warnings
 
 from PIL import Image
-from stability_sdk import client
-import stability_sdk.interfaces.gooseai.generation.generation_pb2 as generation
+from diffusers import StableDiffusionPipeline
+import torch
 from torchvision import transforms
 from dataset import FlickrDataset
 
-with open("secret.txt", 'r') as f:
-	key = f.readline().strip()
-
-# https://platform.stability.ai/docs/getting-started/python-sdk
-os.environ['STABILITY_HOST'] = 'grpc.stability.ai:443'
-os.environ['STABILITY_KEY'] = key 
 
 def main(flags):
     # Make the image size the same as the dataset, retrieve prompts
@@ -24,47 +18,18 @@ def main(flags):
         transform = transforms.Resize([img_size, img_size])
         dataset = FlickrDataset("../data", transform)
         prompts = dataset.annotations
+    
+    model_id = "stabilityai/stable-diffusion-2"
 
-    # set up stability api connection 
-    # https://github.com/Stability-AI/api-interfaces/blob/main/src/proto/generation.proto
-    stability_api = client.StabilityInference(
-        key=os.environ['STABILITY_KEY'],
-        verbose=True,
-        engine="stable-diffusion-xl-beta-v2-2-2",
-    )
-    generate_params = { 
-        "seed" : 2952, 
-        "steps" : 30,
-        "cfg_scale" : 8.0,
-        "width" : img_size,
-        "height" : img_size, 
-        "samples" : 1,
-        "sampler" : generation.SAMPLER_K_DPMPP_2M
-    }
+    pipe = StableDiffusionPipeline.from_pretrained(model_id, torch_dtype=torch.float16)
+    pipe = pipe.to("cuda")
 
-    stop = 0
-    # For each prompt, generate images and save them.
-    path = f"../data/generated_images/{flags.dataset}/"
-    os.makedirs(path, exist_ok=True)
+    num_imgs = 4
     for p_id, prompt in prompts.items():
-        if stop == 3:
-            exit()
-        stop += 1
-        responses = stability_api.generate(
-            prompt=prompt,
-            **generate_params
-        )
-
-        # code from tutorial to save images
-        for i, resp in enumerate(responses):
-            for artifact in resp.artifacts:
-                if artifact.finish_reason == generation.FILTER:
-                    warnings.warn(
-                        "Your request activated the API's safety filters and could not be processed."
-                        "Please modify the prompt and try again.")
-                if artifact.type == generation.ARTIFACT_IMAGE:
-                    img = Image.open(io.BytesIO(artifact.binary))
-                    img.save(path + f"{p_id}_{i}.png") 
+        for i in range(num_imgs):
+            generator = torch.Generator("cuda").manual_seed(i)
+            image = pipe(prompt=prompt, generator=generator).images[0]
+            image.save(f"../data/generated_images/{p_id}_{i}.png")
 
 if __name__ == "__main__":
     tick = time.time()
