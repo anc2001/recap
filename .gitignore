@@ -1,0 +1,6 @@
+*.DS_Store
+.vscode/*
+*.pyc
+*.pyo
+data/*
+secret.txt

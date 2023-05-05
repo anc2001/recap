@@ -22,7 +22,7 @@ def main(flags):
     if flags.dataset == "flickr":
         img_size = 256 
         transform = transforms.Resize([img_size, img_size])
-        dataset = FlickrDataset("/Users/adrianchang/CS/CS2952N/recap/data", transform)
+        dataset = FlickrDataset("../data", transform)
         prompts = dataset.annotations
 
     # set up stability api connection 
@@ -38,14 +38,18 @@ def main(flags):
         "cfg_scale" : 8.0,
         "width" : img_size,
         "height" : img_size, 
-        "samples" : 2,
+        "samples" : 1,
         "sampler" : generation.SAMPLER_K_DPMPP_2M
     }
 
+    stop = 0
     # For each prompt, generate images and save them.
-    path = f"/Users/adrianchang/CS/CS2952N/recap/data/generated_images/{flags.dataset}/"
+    path = f"../data/generated_images/{flags.dataset}/"
     os.makedirs(path, exist_ok=True)
     for p_id, prompt in prompts.items():
+        if stop == 3:
+            exit()
+        stop += 1
         responses = stability_api.generate(
             prompt=prompt,
             **generate_params
@@ -60,8 +64,7 @@ def main(flags):
                         "Please modify the prompt and try again.")
                 if artifact.type == generation.ARTIFACT_IMAGE:
                     img = Image.open(io.BytesIO(artifact.binary))
-                    img.save(path + f"prompt_{p_id}_{i}.png") 
-
+                    img.save(path + f"{p_id}_{i}.png") 
 
 if __name__ == "__main__":
     tick = time.time()

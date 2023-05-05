@@ -45,7 +45,7 @@ class FlickrDataset(Dataset):
         
         self.img_filepaths = list(expert[0])
         self.caption_ids = list(expert[1])
-        self.human_scores = list(expert[2])
+        self.human_scores = list(expert['score'])
         
     def __len__(self):
         return len(self.img_filepaths)
@@ -65,4 +65,4 @@ class FlickrDataset(Dataset):
 
         return img, caption, human_score
 
-dataset = FlickrDataset("/Users/adrianchang/CS/CS2952N/recap/data")
+# dataset = FlickrDataset("/Users/adrianchang/CS/CS2952N/recap/data")
