@@ -28,6 +28,7 @@ def main(flags):
     num_imgs = 3
     for caption_id in tqdm(caption_ids):
         prompt = dataset.annotations[caption_id]
+        prompt = prompt.strip('.').strip(' ') + ", color photo"
         for i in range(num_imgs):
             filepath = f"../data/generated_images/{caption_id}_{i}.png"
             print(filepath)
