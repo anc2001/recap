@@ -44,7 +44,7 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", choices=["flickr"], required=True)
-    parser.add_argument("--split", choices=[0,1,2], type=int, required=True)
+    parser.add_argument("--split", choices=[0,1,2,3], type=int, required=True)
     flags = parser.parse_args()
   
     main(flags)
