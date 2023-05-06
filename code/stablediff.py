@@ -15,10 +15,9 @@ def main(flags):
     # Make the image size the same as the dataset, retrieve prompts
     if flags.dataset == "flickr":
         img_size = 256 
-        transform = transforms.Resize([img_size, img_size])
-        dataset = FlickrDataset("../data", transform)
-        caption_ids = dataset.splits[flags.split]
-        # caption_ids = list(set(dataset.caption_ids))
+        dataset = FlickrDataset("../data")
+        # caption_ids = dataset.splits[flags.split]
+        caption_ids = list(set(dataset.caption_ids))
     
     model_id = "stabilityai/stable-diffusion-2"
 

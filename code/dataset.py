@@ -1,7 +1,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import torch
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset
 from torchvision.io import read_image
 import os
 from PIL import Image
@@ -64,10 +64,17 @@ class FlickrDataset(Dataset):
         img = read_image(os.path.join(self.img_folder, img_filepath))
         if self.transform:
             img = self.transform(img)
-
-        # generated_img = read_image(os.path.join(self.generated_img_folder, caption_id))
-        # if self.transform:
-        #     img = self.transform(img)
-
-        return img, caption, human_score
+        
+        try:
+            generated_imgs = []
+            for i in range(3):
+                generated_img = read_image(os.path.join(self.generated_img_folder, f"{caption_id}_{i}.png"))
+                if self.transform:
+                    generated_img = self.transform(generated_img)
+                generated_imgs.append(generated_img)
+            generated_imgs = torch.tensor(generated_imgs) / 255
+        except:
+            generated_imgs = torch.rand([3, 3, 256, 256])
+        
+        return img, caption, human_score, generated_imgs
 
