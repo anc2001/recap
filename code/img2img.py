@@ -38,7 +38,7 @@ metrics = {
 
 def main(flags):
     metric = metrics[flags.metric]
-    transform = transforms.Resize([img_size, img_size])
+    transform = transforms.Resize([img_size, img_size], antialias=True)
     to_pil = transforms.ToPILImage()
     dataset = FlickrDataset("../data", transform)
 
@@ -46,7 +46,7 @@ def main(flags):
     for imgs, captions, human_scores, generated_imgs in tqdm(dataloader):
         loss, base_score = evaluate_metric(metric, imgs, generated_imgs)
         break
-    print(loss, base_score)
+    print(loss.shape, base_score.shape, bsz)
 
 if __name__ == '__main__':
     tick = time.time()
