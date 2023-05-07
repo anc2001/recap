@@ -45,8 +45,9 @@ def main(flags):
     dataloader = DataLoader(dataset, batch_size = bsz, shuffle=True)
     for imgs, captions, human_scores, generated_imgs in tqdm(dataloader):
         loss, base_score = evaluate_metric(metric, imgs, generated_imgs)
+        max_score = torch.max(loss, axis=0)
         break
-    print(loss.shape, base_score.shape, bsz)
+    print(loss.shape, base_score.shape, max_score.shape, bsz)
 
 if __name__ == '__main__':
     tick = time.time()
