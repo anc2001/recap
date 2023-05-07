@@ -6,6 +6,8 @@ from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 import piq
 import torch
+import time
+import argparse
 
 img_size = 256
 bsz = 16
@@ -30,15 +32,30 @@ def evaluate_metric(metric, imgs, generated_imgs):
 
     return loss, base_score
 
-def main():
-    SSIM_metric = piq.SSIMLoss(reduction='none')
+metrics = {
+    "SSIM" : piq.SSIMLoss(reduction='none')
+}
+
+def main(flags):
+    metric = metrics[flags.metric]
     transform = transforms.Resize([img_size, img_size])
     to_pil = transforms.ToPILImage()
     dataset = FlickrDataset("../data", transform)
 
     dataloader = DataLoader(dataset, batch_size = bsz, shuffle=True)
     for imgs, captions, human_scores, generated_imgs in tqdm(dataloader):
-        loss, base_score = evaluate_metric(SSIM_metric, imgs, generated_imgs)
+        loss, base_score = evaluate_metric(metric, imgs, generated_imgs)
+        break
+    print(loss, base_score)
 
 if __name__ == '__main__':
-    main()
+    tick = time.time()
+    
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--metric", choices=metrics.keys(), required=True)
+    flags = parser.parse_args()
+  
+    main(flags)
+
+    tock = time.time()
+    print(tock - tick, "seconds")

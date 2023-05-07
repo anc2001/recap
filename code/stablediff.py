@@ -16,8 +16,10 @@ def main(flags):
     if flags.dataset == "flickr":
         img_size = 256 
         dataset = FlickrDataset("../data")
-        # caption_ids = dataset.splits[flags.split]
-        caption_ids = list(set(dataset.caption_ids))
+        if flags.split in [0,1,2,3]:
+            caption_ids = dataset.splits[flags.split]
+        else:
+            caption_ids = list(set(dataset.caption_ids))
     
     model_id = "stabilityai/stable-diffusion-2"
 
@@ -43,7 +45,7 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", choices=["flickr"], required=True)
-    parser.add_argument("--split", choices=[0,1,2,3], type=int, required=True)
+    parser.add_argument("--split", choices=[0,1,2,3], type=int, default=-1)
     flags = parser.parse_args()
   
     main(flags)
