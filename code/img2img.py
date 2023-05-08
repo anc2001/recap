@@ -1,6 +1,6 @@
 import pickle as pkl
 from tqdm import tqdm
-from dataset import FlickrDataset, FlickrDatasetMatching
+from dataset import FlickrDatasetAnnotated, FlickrDatasetMatching
 from torchvision import transforms
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
@@ -47,21 +47,35 @@ metrics = {
     "SSIM" : piq.SSIMLoss(reduction='none')
 }
 
+transform = transforms.Resize([img_size, img_size], antialias=True)
+datasets = {
+    'matching' : FlickrDatasetMatching("../data", transform),
+    'annotated' : FlickrDatasetAnnotated("../data", transform)
+}
+
 def main(flags):
     metric = metrics[flags.metric]
+    dataset = datasets[flags.dataset]
     transform = transforms.Resize([img_size, img_size], antialias=True)
     to_pil = transforms.ToPILImage()
-    # dataset = FlickrDatasetMatching("../data", transform)
-    dataset = FlickrDataset("../data", transform)
 
     # create a new csv for each metric as a list  
     cols = ['caption_id', 'human_scores', 'generated_image_id', f'{flags.metric}', f'internal_baseline_{flags.metric}']
     out = []
 
     dataloader = DataLoader(dataset, batch_size = bsz, shuffle=True)
-    for imgs, caption_ids, human_scores, generated_imgs in tqdm(dataloader):
+    for collated_vals in tqdm(dataloader):
+        if flags.dataset == 'matching':
+            (
+                imgs, caption_ids, generated_imgs
+            ) = collated_vals
+        elif flags.dataset == 'annotated':
+            (
+                imgs, caption_ids, human_scores, generated_imgs
+            ) = collated_vals
+        
         scores, base_score = evaluate_metric(metric, imgs, generated_imgs)
-
+        
         # caption_ids size [N]
         # human_scores size [N]
         # generated_image_ids size [N, NUM_IMGS] <- we have to make this
@@ -94,6 +108,7 @@ if __name__ == '__main__':
     tick = time.time()
     
     parser = argparse.ArgumentParser()
+    parser.add_argument("--dataset", choices=datasets.keys(), required=True)
     parser.add_argument("--metric", choices=metrics.keys(), required=True)
     parser.add_argument("--shuffled", action='store_true')
     parser.set_defaults(shuffled=False)

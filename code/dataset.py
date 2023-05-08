@@ -17,7 +17,7 @@ class FlickrDatasetMatching(Dataset):
             sep='\t',
             header=None
         )
-        self.annotations = annotations        
+        self.annotations = dict(zip(annotations[0], annotations[1]))
         self.img_folder = os.path.join(base_filepath, "Flicker8k_Dataset")
         self.generated_img_folder = os.path.join(base_filepath, "generated_images")
 
@@ -47,12 +47,21 @@ class FlickrDatasetMatching(Dataset):
             generated_img = read_image(os.path.join(self.generated_img_folder, f"{caption_id}_{i}.png"))
             if self.transform:
                 generated_img = self.transform(generated_img)
-            generated_imgs.append(generated_img)
-        generated_imgs = torch.tensor(generated_imgs) / 255
+            if len(generated_imgs):
+                generated_imgs = torch.concat(
+                    [
+                        generated_imgs, 
+                        torch.unsqueeze(generated_img, 0)
+                    ],
+                    dim = 0
+                )
+            else:
+                generated_imgs = torch.unsqueeze(generated_img, 0)
+        generated_imgs = generated_imgs / 255
         
         return img, caption_id, generated_imgs
 
-class FlickrDataset(Dataset):
+class FlickrDatasetAnnotated(Dataset):
     def __init__(self, base_filepath, transform = None):
         self.transform = transform
         annotation_filepath = os.path.join(base_filepath, "Flickr8k_text")
