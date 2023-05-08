@@ -41,7 +41,7 @@ def main(flags):
         prompt += ", color photo"
         for i in range(num_imgs):
             if flags.shuffle:
-                filepath = f"../data/generated_images_shuf/{caption_id}_{i}.png"
+                filepath = f"../data/generated_images_shuf/{caption_id}_shuf_{i}.png"
             else:
                 filepath = f"../data/generated_images/{caption_id}_{i}.png"
             print(filepath)
