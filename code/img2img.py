@@ -8,6 +8,7 @@ import piq
 import torch
 import time
 import argparse
+import pandas as pd
 
 img_size = 256
 bsz = 16
@@ -42,12 +43,21 @@ def main(flags):
     to_pil = transforms.ToPILImage()
     dataset = FlickrDataset("../data", transform)
 
+    # create a new csv for each metric as a list  
+    cols = ['caption_id', 'generated_image', f'max_{flags.metric}', f'avg_{flags.metric}']
+    out = []
+
     dataloader = DataLoader(dataset, batch_size = bsz, shuffle=True)
     for imgs, captions, human_scores, generated_imgs in tqdm(dataloader):
         loss, base_score = evaluate_metric(metric, imgs, generated_imgs)
-        max_score = torch.max(loss, axis=0)
-        break
-    print(loss.shape, base_score.shape, max_score.shape, bsz)
+        max_score = torch.max(loss, axis=1)[0]
+
+        # TODO
+        out.append([caption_id, generated_image])
+
+    df_out = pd.DataFrame(out, columns=cols)
+    assert(len(df_out) == 2931)
+    # TODO save csv
 
 if __name__ == '__main__':
     tick = time.time()
