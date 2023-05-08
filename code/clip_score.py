@@ -17,8 +17,8 @@ class CLIP_image_score():
     
     def __call__(self, real_images, fake_images):
         with torch.no_grad():
-            real_image_features = self.model.encode_image(real_images.to(device)).float()
-            fake_image_features = self.model.encode_image(fake_images.to(device)).float()
+            real_image_features = self.model.encode_image(real_images.to(self.device)).float()
+            fake_image_features = self.model.encode_image(fake_images.to(self.device)).float()
         real_image_features /= real_image_features.norm(dim=-1, keepdim=True)
         fake_image_features /= fake_image_features.norm(dim=-1, keepdim=True)
         
