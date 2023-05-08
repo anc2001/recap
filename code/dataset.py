@@ -62,7 +62,7 @@ class FlickrDatasetMatching(Dataset):
         return img, caption_id, generated_imgs
 
 class FlickrDatasetAnnotated(Dataset):
-    def __init__(self, base_filepath, transform = None):
+    def __init__(self, base_filepath, transform = None, generated_img_tag=''):
         self.transform = transform
         annotation_filepath = os.path.join(base_filepath, "Flickr8k_text")
         expert = pd.read_csv(
@@ -90,7 +90,7 @@ class FlickrDatasetAnnotated(Dataset):
         # human_annotations.sort_values('score').drop_duplicates(subset=[0, 1], keep='last')
 
         self.img_folder = os.path.join(base_filepath, "Flicker8k_Dataset")
-        self.generated_img_folder = os.path.join(base_filepath, "generated_images")
+        self.generated_img_folder = os.path.join(base_filepath, f"generated_images{generated_img_tag}")
         self.annotations = dict(zip(annotations[0], annotations[1]))
 
         # self.img_filepaths = list(human_annotations[0])

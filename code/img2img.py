@@ -50,7 +50,8 @@ metrics = {
 transform = transforms.Resize([img_size, img_size], antialias=True)
 datasets = {
     'matching' : FlickrDatasetMatching("../data", transform),
-    'annotated' : FlickrDatasetAnnotated("../data", transform)
+    'annotated' : FlickrDatasetAnnotated("../data", transform),
+    'shuffled' : FlickrDatasetAnnotated("../data", transform, '_shuf')
 }
 
 def main(flags):
@@ -69,11 +70,13 @@ def main(flags):
             (
                 imgs, caption_ids, generated_imgs
             ) = collated_vals
-        elif flags.dataset == 'annotated':
+        elif flags.dataset in ['annotated', 'shuffled']:
             (
                 imgs, caption_ids, human_scores, generated_imgs
             ) = collated_vals
         
+        if flags.noise:
+            generated_imgs = torch.rand(generated_imgs.shape)
         scores, base_score = evaluate_metric(metric, imgs, generated_imgs)
         
         # caption_ids size [N]
@@ -84,8 +87,8 @@ def main(flags):
         generated_img_ids = []
         for caption_id in caption_ids:
             for i in range(num_generated_imgs):
-                if flags.shuffled:
-                    generated_img_ids.append(caption_id + f'shuf_{i}')
+                if flags.dataset == "shuffled":
+                    generated_img_ids.append(caption_id + f'_shuf_{i}')
                 else:
                     generated_img_ids.append(caption_id + f'_{i}')
 
@@ -102,7 +105,9 @@ def main(flags):
     assert(len(df_out) == 2931)
 
     os.makedirs("../results", exist_ok=True)
-    df_out.to_csv(f"../results/{flags.metric}{'_shuf' if flags.shuffled else ''}.csv", sep='\t')
+    df_out.to_csv(f"../results/{flags.metric}_{flags.dataset}" + \
+                  f"{'_shuf' if flags.dataset == 'shuffled' else ''}" + \
+                  f"{'_noise' if flags.noise else ''}.csv", sep='\t')
 
 if __name__ == '__main__':
     tick = time.time()
@@ -110,7 +115,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", choices=datasets.keys(), required=True)
     parser.add_argument("--metric", choices=metrics.keys(), required=True)
-    parser.add_argument("--shuffled", action='store_true')
+    parser.add_argument("--noise", action='store_true')
     parser.set_defaults(shuffled=False)
     flags = parser.parse_args()
   
