@@ -1,6 +1,6 @@
 import pickle as pkl
 from tqdm import tqdm
-from dataset import FlickrDataset
+from dataset import FlickrDataset, FlickrDatasetMatching
 from torchvision import transforms
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
@@ -50,6 +50,7 @@ def main(flags):
     metric = metrics[flags.metric]
     transform = transforms.Resize([img_size, img_size], antialias=True)
     to_pil = transforms.ToPILImage()
+    # dataset = FlickrDatasetMatching("../data", transform)
     dataset = FlickrDataset("../data", transform)
 
     # create a new csv for each metric as a list  
@@ -60,9 +61,6 @@ def main(flags):
     for imgs, captions, human_scores, generated_imgs in tqdm(dataloader):
         loss, base_score = evaluate_metric(metric, imgs, generated_imgs)
         max_score = torch.max(loss, axis=1)[0]
-
-        # TODO
-        out.append([caption_id, generated_image])
 
     df_out = pd.DataFrame(out, columns=cols)
     assert(len(df_out) == 2931)

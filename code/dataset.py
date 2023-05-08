@@ -8,8 +8,53 @@ from PIL import Image
 import numpy as np
 import pickle as pkl
 
+class FlickrDatasetMatching(Dataset):
+    def __init__(self, base_filepath, transform = None):
+        self.transform = transform
+        annotation_filepath = os.path.join(base_filepath, "Flickr8k_text")
+        annotations = pd.read_csv(
+            os.path.join(annotation_filepath, "Flickr8k.token.txt"),
+            sep='\t',
+            header=None
+        )
+        self.annotations = annotations        
+        self.img_folder = os.path.join(base_filepath, "Flicker8k_Dataset")
+        self.generated_img_folder = os.path.join(base_filepath, "generated_images")
+
+        expert = pd.read_csv(
+            os.path.join(annotation_filepath, "ExpertAnnotations.txt"),
+            sep='\t',
+            header=None
+        )
+        caption_ids = list(expert[1])
+        img_filepaths = [caption_id.split("#")[0] for caption_id in caption_ids]
+        
+        self.img_filepaths = img_filepaths
+        self.caption_ids = caption_ids
+
+    def __len__(self):
+        return len(self.img_filepaths)
+
+    def __getitem__(self, idx : int):
+        img_filepath = self.img_filepaths[idx]
+        caption_id = self.caption_ids[idx]
+        img = read_image(os.path.join(self.img_folder, img_filepath))
+        if self.transform:
+            img = self.transform(img)
+        
+        generated_imgs = []
+        for i in range(3):
+            generated_img = read_image(os.path.join(self.generated_img_folder, f"{caption_id}_{i}.png"))
+            if self.transform:
+                generated_img = self.transform(generated_img)
+            generated_imgs.append(generated_img)
+        generated_imgs = torch.tensor(generated_imgs) / 255
+        
+        return img, caption_id, generated_imgs
+
 class FlickrDataset(Dataset):
     def __init__(self, base_filepath, transform = None):
+        self.transform = transform
         annotation_filepath = os.path.join(base_filepath, "Flickr8k_text")
         expert = pd.read_csv(
             os.path.join(annotation_filepath, "ExpertAnnotations.txt"),
@@ -37,7 +82,6 @@ class FlickrDataset(Dataset):
 
         self.img_folder = os.path.join(base_filepath, "Flicker8k_Dataset")
         self.generated_img_folder = os.path.join(base_filepath, "generated_images")
-        self.transform = transform
         self.annotations = dict(zip(annotations[0], annotations[1]))
 
         # self.img_filepaths = list(human_annotations[0])
@@ -64,16 +108,21 @@ class FlickrDataset(Dataset):
         if self.transform:
             img = self.transform(img)
         
-        try:
-            generated_imgs = []
-            for i in range(3):
-                generated_img = read_image(os.path.join(self.generated_img_folder, f"{caption_id}_{i}.png"))
-                if self.transform:
-                    generated_img = self.transform(generated_img)
-                generated_imgs.append(generated_img)
-            generated_imgs = torch.tensor(generated_imgs) / 255
-        except:
-            generated_imgs = torch.rand([3, 3, 256, 256])
+        generated_imgs = []
+        for i in range(3):
+            generated_img = read_image(os.path.join(self.generated_img_folder, f"{caption_id}_{i}.png"))
+            if self.transform:
+                generated_img = self.transform(generated_img)
+            if len(generated_imgs):
+                generated_imgs = torch.concat(
+                    [
+                        generated_imgs, 
+                        torch.unsqueeze(generated_img, 0)
+                    ],
+                    dim = 0
+                )
+            else:
+                generated_imgs = torch.unsqueeze(generated_img, 0)
+        generated_imgs = generated_imgs / 255
         
         return img, caption_id, human_score, generated_imgs
-
