@@ -27,6 +27,9 @@ def main(flags):
     pipe = StableDiffusionPipeline.from_pretrained(model_id, torch_dtype=torch.float16)
     pipe = pipe.to("cuda")
 
+    if flags.shuffle:
+        os.makedirs("../data/generated_images_shuf")
+
     num_imgs = 3
     for caption_id in tqdm(caption_ids):
         prompt = dataset.annotations[caption_id]
@@ -37,7 +40,10 @@ def main(flags):
             prompt = ' '.join(temp)
         prompt += ", color photo"
         for i in range(num_imgs):
-            filepath = f"../data/generated_images/{caption_id}_{i}.png"
+            if flags.shuffle:
+                filepath = f"../data/generated_images_shuf/{caption_id}_{i}.png"
+            else:
+                filepath = f"../data/generated_images/{caption_id}_{i}.png"
             print(filepath)
             if not os.path.isfile(filepath):
                 generator = torch.Generator("cuda").manual_seed(i)
@@ -52,7 +58,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", choices=["flickr"], required=True)
     parser.add_argument("--split", choices=[0,1,2,3], type=int, default=-1)
-    parser.add_argument("--shuffle", type=bool, default=False)
+    parser.add_argument("--shuffle", action='store_true')
+    parser.set_defaults(shuffle=False)
     flags = parser.parse_args()
   
     main(flags)
