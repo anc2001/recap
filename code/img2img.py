@@ -99,7 +99,7 @@ def main(flags):
         col3 = np.array(generated_img_ids)
         col4 = scores.numpy()
         col5 = np.repeat(np.expand_dims(np.array(base_score), 1), 3, axis=1)
-        new_rows = torch.concat([col1, col2, col3, col4, col5], axis=1)
+        new_rows = np.concat([col1, col2, col3, col4, col5], axis=1)
 
         out.append(new_rows.list())
 
