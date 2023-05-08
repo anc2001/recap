@@ -15,6 +15,15 @@ bsz = 16
 num_generated_imgs = 3
 
 def evaluate_metric(metric, imgs, generated_imgs):
+    """
+    metric: PIQ metric class 
+    imgs: [N, 3, H, W]
+    generated_imgs: [N, NUM_IMGS, 3, H, W]
+
+    returns
+    loss: [N, 3] - score for each image in the batch 
+    base_scores: [N] - internal score 
+    """
     base_score = []
     for item in [(0,1), (0,2), (1,2)]:
         img_1 = generated_imgs[:, item[0]]
