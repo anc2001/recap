@@ -103,7 +103,7 @@ def main(flags):
         col5 = np.repeat(np.expand_dims(np.array(base_score), 1), 3, axis=1)
         new_rows = np.concatenate([col1, col2, col3, col4, col5], axis=1)
 
-        out.append(new_rows.list())
+        out.append(new_rows.tolist())
 
     df_out = pd.DataFrame(out, columns=cols)
     assert(len(df_out) == 2931)
