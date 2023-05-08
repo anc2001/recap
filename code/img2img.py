@@ -13,7 +13,7 @@ import os
 import numpy as np
 
 img_size = 256
-bsz = 16
+bsz = 64 
 num_generated_imgs = 3
 
 def evaluate_metric(metric, imgs, generated_imgs):
