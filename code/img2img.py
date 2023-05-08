@@ -11,6 +11,7 @@ import argparse
 import pandas as pd
 import os
 import numpy as np
+from clip_score import CLIP_image_score
 
 img_size = 256
 bsz = 64 
@@ -45,7 +46,13 @@ def evaluate_metric(metric, imgs, generated_imgs):
     return loss, base_score
 
 metrics = {
-    "SSIM" : piq.SSIMLoss(reduction='none')
+    "SSIM" : piq.SSIMLoss(reduction='none'),
+    "MS-SSIM" : piq.MultiScaleSSIMLoss(reduction='none'),
+    "VIF" : piq.VIFLoss(reduction='none'),
+    "GMSD" : piq.GMSDLoss(reduction='none'),
+    "FSIM" : piq.FSIMLoss(reduction='none'),
+    "CLIP_RN50" : CLIP_image_score("RN50"),
+    "CLIP_ViT-L/14" : CLIP_image_score("ViT-L/14")
 }
 
 transform = transforms.Resize([img_size, img_size], antialias=True)
@@ -87,25 +94,25 @@ def main(flags):
         # base_score [N] 
         generated_img_ids = []
         for caption_id in caption_ids:
-            temp = []
             for i in range(num_generated_imgs):
                 if flags.dataset == "shuffled":
-                    temp.append(caption_id + f'_shuf_{i}')
+                    generated_img_ids.append(caption_id + f'_shuf_{i}')
                 else:
-                    temp.append(caption_id + f'_{i}')
-            generated_img_ids.append(temp)
+                    generated_img_ids.append(caption_id + f'_{i}')
 
-        
-        col1 = np.repeat(np.expand_dims(np.array(caption_ids), 1), 3, axis=1)
-        col2 = np.repeat(np.expand_dims(np.array(human_scores), 1), 3, axis=1)
-        col3 = np.array(generated_img_ids)
-        col4 = scores.numpy()
-        col5 = np.repeat(np.expand_dims(np.array(base_score), 1), 3, axis=1)
+        col1 = np.expand_dims(np.repeat(np.array(caption_ids), 3), 1)
+        col2 = np.expand_dims(np.repeat(np.array(human_scores), 3), 1)
+        col3 = np.expand_dims(generated_img_ids, 1)
+        col4 = scores.view(-1, 1).numpy()
+        col5 = np.expand_dims(np.repeat(np.array(base_score), 3), 1)
         new_rows = np.concatenate([col1, col2, col3, col4, col5], axis=1)
 
-        out.append(new_rows.tolist())
+        if len(out):
+            out = np.append(out, new_rows, axis = 0)
+        else:
+            out = new_rows
 
-    df_out = pd.DataFrame(out, columns=cols)
+    df_out = pd.DataFrame(out.tolist(), columns=cols)
     assert(len(df_out) == 2931)
 
     os.makedirs("../results", exist_ok=True)
