@@ -60,7 +60,6 @@ class FlickrDataset(Dataset):
         img_filepath = self.img_filepaths[idx]
         caption_id = self.caption_ids[idx]
         human_score = self.human_scores[idx]
-        caption = self.annotations[caption_id]
         img = read_image(os.path.join(self.img_folder, img_filepath))
         if self.transform:
             img = self.transform(img)
@@ -76,5 +75,5 @@ class FlickrDataset(Dataset):
         except:
             generated_imgs = torch.rand([3, 3, 256, 256])
         
-        return img, caption, human_score, generated_imgs
+        return img, caption_id, human_score, generated_imgs
 

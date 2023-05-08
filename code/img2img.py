@@ -21,7 +21,7 @@ def evaluate_metric(metric, imgs, generated_imgs):
     generated_imgs: [N, NUM_IMGS, 3, H, W]
 
     returns
-    loss: [N, 3] - score for each image in the batch 
+    loss: [N, NUM_IMGS] - score for each image in the batch 
     base_scores: [N] - internal score 
     """
     base_score = []
@@ -38,7 +38,7 @@ def evaluate_metric(metric, imgs, generated_imgs):
     generated_imgs_flat = generated_imgs.view(bsz * num_generated_imgs, 3, img_size, img_size)
     imgs_flat = torch.unsqueeze(imgs, 1).expand(-1, 3, 3, img_size, img_size). \
         reshape(bsz * num_generated_imgs, 3, img_size, img_size) / 255
-    loss = metric(imgs_flat, generated_imgs_flat).view(-1, 3)
+    loss = metric(imgs_flat, generated_imgs_flat).view(-1, num_generated_imgs)
 
     return loss, base_score
 
