@@ -28,7 +28,7 @@ def main(flags):
     pipe = pipe.to("cuda")
 
     if flags.shuffle:
-        os.makedirs("../data/generated_images_shuf")
+        os.makedirs("../data/generated_images_shuf", exist_ok=True)
 
     num_imgs = 3
     for caption_id in tqdm(caption_ids):
