@@ -9,6 +9,7 @@ import torch
 import time
 import argparse
 import pandas as pd
+import os
 
 img_size = 256
 bsz = 16
@@ -54,23 +55,48 @@ def main(flags):
     dataset = FlickrDataset("../data", transform)
 
     # create a new csv for each metric as a list  
-    cols = ['caption_id', 'generated_image', f'max_{flags.metric}', f'avg_{flags.metric}']
+    cols = ['caption_id', 'human_scores', 'generated_image_id', f'{flags.metric}', f'internal_baseline_{flags.metric}']
     out = []
 
     dataloader = DataLoader(dataset, batch_size = bsz, shuffle=True)
-    for imgs, captions, human_scores, generated_imgs in tqdm(dataloader):
-        loss, base_score = evaluate_metric(metric, imgs, generated_imgs)
-        max_score = torch.max(loss, axis=1)[0]
+    for imgs, caption_ids, human_scores, generated_imgs in tqdm(dataloader):
+        scores, base_score = evaluate_metric(metric, imgs, generated_imgs)
+
+        # caption_ids size [N]
+        # human_scores size [N]
+        # generated_image_ids size [N, NUM_IMGS] <- we have to make this
+        # loss [N, NUM_IMGS]
+        # base_score [N] 
+        generated_img_ids = []
+        for caption_id in caption_ids:
+            for i in range(num_generated_imgs):
+                if flags.shuffled:
+                    generated_img_ids.append(caption_id + f'shuf_{i}')
+                else:
+                    generated_img_ids.append(caption_id + f'_{i}')
+
+        col1 = caption_ids.unsqueeze(1).expand(-1, 3)
+        col2 = human_scores.unsqueeze(1).expand(-1, 3)
+        col3 = torch.Tensor(generated_img_ids)
+        col4 = scores
+        col5 = base_score.unsqueeze(1).expand(-1, 3)
+        new_rows = torch.concat([col1, col2, col3, col4, col5], axis=1)
+
+        out.append(new_rows.list())
 
     df_out = pd.DataFrame(out, columns=cols)
     assert(len(df_out) == 2931)
-    # TODO save csv
+
+    os.makedirs("../results", exist_ok=True)
+    df_out.to_csv(f"../results/{flags.metric}{'_shuf' if flags.shuffled else ''}.csv", sep='\t')
 
 if __name__ == '__main__':
     tick = time.time()
     
     parser = argparse.ArgumentParser()
     parser.add_argument("--metric", choices=metrics.keys(), required=True)
+    parser.add_argument("--shuffled", action='store_true')
+    parser.set_defaults(shuffled=False)
     flags = parser.parse_args()
   
     main(flags)
