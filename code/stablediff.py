@@ -1,6 +1,7 @@
 import os
 import io
 import time
+import random
 import argparse
 import warnings
 
@@ -29,7 +30,12 @@ def main(flags):
     num_imgs = 3
     for caption_id in tqdm(caption_ids):
         prompt = dataset.annotations[caption_id]
-        prompt = prompt.strip('.').strip(' ') + ", color photo"
+        prompt = prompt.strip('.').strip(' ')
+        if flags.shuffle:
+            temp = prompt.split(' ')
+            random.shuffle(temp)
+            prompt = ' '.join(temp)
+        prompt += ", color photo"
         for i in range(num_imgs):
             filepath = f"../data/generated_images/{caption_id}_{i}.png"
             print(filepath)
@@ -46,6 +52,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", choices=["flickr"], required=True)
     parser.add_argument("--split", choices=[0,1,2,3], type=int, default=-1)
+    parser.add_argument("--shuffle", type=bool, default=False)
     flags = parser.parse_args()
   
     main(flags)
