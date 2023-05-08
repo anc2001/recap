@@ -10,6 +10,7 @@ import time
 import argparse
 import pandas as pd
 import os
+import numpy as np
 
 img_size = 256
 bsz = 16
@@ -92,11 +93,12 @@ def main(flags):
                 else:
                     generated_img_ids.append(caption_id + f'_{i}')
 
-        col1 = caption_ids.unsqueeze(1).expand(-1, 3)
-        col2 = human_scores.unsqueeze(1).expand(-1, 3)
-        col3 = torch.Tensor(generated_img_ids)
-        col4 = scores
-        col5 = base_score.unsqueeze(1).expand(-1, 3)
+        
+        col1 = np.repeat(np.expand_dims(np.array(caption_ids), 1), 3, axis=1)
+        col2 = np.repeat(np.expand_dims(np.array(human_scores), 1), 3, axis=1)
+        col3 = np.array(generated_img_ids)
+        col4 = scores.numpy()
+        col5 = np.repeat(np.expand_dims(np.array(base_score), 1), 3, axis=1)
         new_rows = torch.concat([col1, col2, col3, col4, col5], axis=1)
 
         out.append(new_rows.list())
