@@ -87,11 +87,13 @@ def main(flags):
         # base_score [N] 
         generated_img_ids = []
         for caption_id in caption_ids:
+            temp = []
             for i in range(num_generated_imgs):
                 if flags.dataset == "shuffled":
-                    generated_img_ids.append(caption_id + f'_shuf_{i}')
+                    temp.append(caption_id + f'_shuf_{i}')
                 else:
-                    generated_img_ids.append(caption_id + f'_{i}')
+                    temp.append(caption_id + f'_{i}')
+            generated_img_ids.append(temp)
 
         
         col1 = np.repeat(np.expand_dims(np.array(caption_ids), 1), 3, axis=1)
