@@ -40,7 +40,7 @@ def evaluate_metric(metric, imgs, generated_imgs):
     img_size = imgs.size(2)
     generated_imgs_flat = generated_imgs.view(-1, 3, img_size, img_size)
     imgs_flat = imgs.unsqueeze(1).expand(-1, 3, 3, img_size, img_size). \
-        reshape(bsz * num_generated_imgs, 3, img_size, img_size)
+        reshape(-1, 3, img_size, img_size)
     loss = metric(imgs_flat, generated_imgs_flat).view(-1, num_generated_imgs)
 
     return loss, base_score
