@@ -37,6 +37,8 @@ def evaluate_metric(metric, imgs, generated_imgs):
         else:
             base_score = base_loss
     base_score /= 3
+
+    print(generated_imgs.shape)
     
     generated_imgs_flat = generated_imgs.view(bsz * num_generated_imgs, 3, img_size, img_size)
     imgs_flat = torch.unsqueeze(imgs, 1).expand(-1, 3, 3, img_size, img_size). \
@@ -65,7 +67,6 @@ datasets = {
 def main(flags):
     metric = metrics[flags.metric]
     dataset = datasets[flags.dataset]
-    transform = transforms.Resize([img_size, img_size], antialias=True)
     to_pil = transforms.ToPILImage()
 
     # create a new csv for each metric as a list  
