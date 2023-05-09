@@ -13,8 +13,7 @@ import os
 import numpy as np
 from clip_score import CLIP_image_score
 
-img_size = 256
-bsz = 64 
+bsz = 16
 num_generated_imgs = 3
 
 def evaluate_metric(metric, imgs, generated_imgs):
@@ -27,8 +26,6 @@ def evaluate_metric(metric, imgs, generated_imgs):
     loss: [N, NUM_IMGS] - score for each image in the batch 
     base_scores: [N] - internal score 
     """
-    imgs = imgs / 255
-    generated_imgs = generated_imgs / 255
     base_score = []
     for item in [(0,1), (0,2), (1,2)]:
         img_1 = generated_imgs[:, item[0]]
@@ -39,7 +36,10 @@ def evaluate_metric(metric, imgs, generated_imgs):
         else:
             base_score = base_loss
     base_score /= 3
+
+    print(generated_imgs.shape)
     
+    img_size = imgs.size(2)
     generated_imgs_flat = generated_imgs.view(bsz * num_generated_imgs, 3, img_size, img_size)
     imgs_flat = imgs.unsqueeze(1).expand(-1, 3, 3, img_size, img_size). \
         reshape(bsz * num_generated_imgs, 3, img_size, img_size)
@@ -66,12 +66,14 @@ datasets = {
 def main(flags):
     metric = metrics[flags.metric]
     dataset = datasets[flags.dataset]
+
     if flags.metric == "CLIP_RN50" or flags.metric == "CLIP_ViT-L/14":
-        transform = dataset.preprocess
+        transform = metric.preprocess
     else:
         transform = transforms.Compose([
             transforms.Resize([img_size, img_size], antialias=True),
-            transforms.PILToTensor()
+            transforms.PILToTensor(),
+            transforms.ConvertImageDtype(torch.float)
         ])
     dataset.transform = transform
 
@@ -89,7 +91,7 @@ def main(flags):
             (
                 img_filepaths, imgs, caption_ids, human_scores, generated_imgs
             ) = collated_vals
-        
+
         if flags.noise:
             generated_imgs = torch.rand(generated_imgs.shape)
         scores, base_score = evaluate_metric(metric, imgs, generated_imgs)
