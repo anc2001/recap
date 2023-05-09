@@ -38,28 +38,28 @@ class FlickrDatasetMatching(Dataset):
     def __getitem__(self, idx : int):
         img_filepath = self.img_filepaths[idx]
         caption_id = self.caption_ids[idx]
-        img = read_image(os.path.join(self.img_folder, img_filepath))
+        img = Image.open(os.path.join(self.img_folder, img_filepath))
         if self.transform:
             img = self.transform(img)
         
         generated_imgs = []
         for i in range(3):
-            generated_img = read_image(os.path.join(self.generated_img_folder, f"{caption_id}_{i}.png"))
+            generated_img = Image.open(os.path.join(self.generated_img_folder, f"{caption_id}_{i}.png"))
             if self.transform:
                 generated_img = self.transform(generated_img)
             if len(generated_imgs):
                 generated_imgs = torch.concat(
                     [
                         generated_imgs, 
-                        torch.unsqueeze(generated_img, 0)
+                        generated_img.unsqueeze(0)
                     ],
                     dim = 0
                 )
             else:
-                generated_imgs = torch.unsqueeze(generated_img, 0)
-        generated_imgs = generated_imgs / 255
+                generated_imgs = generated_img.unsqueeze(0)
+        generated_imgs = generated_imgs
         
-        return img, caption_id, generated_imgs
+        return img_filepath, img, caption_id, generated_imgs
 
 class FlickrDatasetAnnotated(Dataset):
     def __init__(self, base_filepath, transform = None, generated_img_tag=''):
@@ -113,13 +113,13 @@ class FlickrDatasetAnnotated(Dataset):
         img_filepath = self.img_filepaths[idx]
         caption_id = self.caption_ids[idx]
         human_score = self.human_scores[idx]
-        img = read_image(os.path.join(self.img_folder, img_filepath))
+        img = Image.open(os.path.join(self.img_folder, img_filepath))
         if self.transform:
             img = self.transform(img)
         
         generated_imgs = []
         for i in range(3):
-            generated_img = read_image(os.path.join(self.generated_img_folder, f"{caption_id}_{i}.png"))
+            generated_img = Image.open(os.path.join(self.generated_img_folder, f"{caption_id}_{i}.png"))
             if self.transform:
                 generated_img = self.transform(generated_img)
             if len(generated_imgs):
@@ -132,6 +132,6 @@ class FlickrDatasetAnnotated(Dataset):
                 )
             else:
                 generated_imgs = torch.unsqueeze(generated_img, 0)
-        generated_imgs = generated_imgs / 255
+        generated_imgs = generated_imgs
         
-        return img, caption_id, human_score, generated_imgs
+        return img_filepath, img, caption_id, human_score, generated_imgs

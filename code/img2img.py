@@ -13,8 +13,7 @@ import os
 import numpy as np
 from clip_score import CLIP_image_score
 
-img_size = 256
-bsz = 64 
+bsz = 16
 num_generated_imgs = 3
 
 def evaluate_metric(metric, imgs, generated_imgs):
@@ -40,9 +39,10 @@ def evaluate_metric(metric, imgs, generated_imgs):
 
     print(generated_imgs.shape)
     
+    img_size = imgs.size(2)
     generated_imgs_flat = generated_imgs.view(bsz * num_generated_imgs, 3, img_size, img_size)
-    imgs_flat = torch.unsqueeze(imgs, 1).expand(-1, 3, 3, img_size, img_size). \
-        reshape(bsz * num_generated_imgs, 3, img_size, img_size) / 255
+    imgs_flat = imgs.unsqueeze(1).expand(-1, 3, 3, img_size, img_size). \
+        reshape(bsz * num_generated_imgs, 3, img_size, img_size)
     loss = metric(imgs_flat, generated_imgs_flat).view(-1, num_generated_imgs)
 
     return loss, base_score
@@ -57,33 +57,41 @@ metrics = {
     "CLIP_ViT-L/14" : CLIP_image_score("ViT-L/14")
 }
 
-transform = transforms.Resize([img_size, img_size], antialias=True)
 datasets = {
-    'matching' : FlickrDatasetMatching("../data", transform),
-    'annotated' : FlickrDatasetAnnotated("../data", transform),
-    'shuffled' : FlickrDatasetAnnotated("../data", transform, '_shuf')
+    'matching' : FlickrDatasetMatching("../data"),
+    'annotated' : FlickrDatasetAnnotated("../data"),
+    'shuffled' : FlickrDatasetAnnotated("../data", generated_img_tag='_shuf')
 }
 
 def main(flags):
     metric = metrics[flags.metric]
     dataset = datasets[flags.dataset]
-    to_pil = transforms.ToPILImage()
+
+    if flags.metric == "CLIP_RN50" or flags.metric == "CLIP_ViT-L/14":
+        transform = metric.preprocess
+    else:
+        transform = transforms.Compose([
+            transforms.Resize([img_size, img_size], antialias=True),
+            transforms.PILToTensor(),
+            transforms.ConvertImageDtype(torch.float)
+        ])
+    dataset.transform = transform
 
     # create a new csv for each metric as a list  
-    cols = ['caption_id', 'human_scores', 'generated_image_id', f'{flags.metric}', f'internal_baseline_{flags.metric}']
+    cols = ['img_id', 'caption_id', 'human_scores', 'generated_image_id', f'{flags.metric}', f'internal_baseline_{flags.metric}']
     out = []
 
     dataloader = DataLoader(dataset, batch_size = bsz, shuffle=True)
     for collated_vals in tqdm(dataloader):
         if flags.dataset == 'matching':
             (
-                imgs, caption_ids, generated_imgs
+                img_filepaths, imgs, caption_ids, generated_imgs
             ) = collated_vals
         elif flags.dataset in ['annotated', 'shuffled']:
             (
-                imgs, caption_ids, human_scores, generated_imgs
+                img_filepaths, imgs, caption_ids, human_scores, generated_imgs
             ) = collated_vals
-        
+
         if flags.noise:
             generated_imgs = torch.rand(generated_imgs.shape)
         scores, base_score = evaluate_metric(metric, imgs, generated_imgs)
@@ -100,13 +108,14 @@ def main(flags):
                     generated_img_ids.append(caption_id + f'_shuf_{i}')
                 else:
                     generated_img_ids.append(caption_id + f'_{i}')
-
+        
+        col0 = np.expand_dims(np.repeat(np.array(img_filepaths), 3), 1)
         col1 = np.expand_dims(np.repeat(np.array(caption_ids), 3), 1)
         col2 = np.expand_dims(np.repeat(np.array(human_scores), 3), 1)
         col3 = np.expand_dims(generated_img_ids, 1)
         col4 = scores.view(-1, 1).numpy()
         col5 = np.expand_dims(np.repeat(np.array(base_score), 3), 1)
-        new_rows = np.concatenate([col1, col2, col3, col4, col5], axis=1)
+        new_rows = np.concatenate([col0, col1, col2, col3, col4, col5], axis=1)
 
         if len(out):
             out = np.append(out, new_rows, axis = 0)
