@@ -36,8 +36,6 @@ def evaluate_metric(metric, imgs, generated_imgs):
         else:
             base_score = base_loss
     base_score /= 3
-
-    print(generated_imgs.shape)
     
     img_size = imgs.size(2)
     generated_imgs_flat = generated_imgs.view(-1, 3, img_size, img_size)
@@ -71,7 +69,7 @@ def main(flags):
         transform = metric.preprocess
     else:
         transform = transforms.Compose([
-            transforms.Resize([img_size, img_size], antialias=True),
+            transforms.Resize([256, 256], antialias=True),
             transforms.PILToTensor(),
             transforms.ConvertImageDtype(torch.float)
         ])
