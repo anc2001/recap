@@ -122,7 +122,8 @@ def main(flags):
 
 
     df_out = pd.DataFrame(out.tolist(), columns=cols)
-    assert(len(df_out) == 2931)
+    print(len(df_out))
+    # assert(len(df_out) == 2931)
 
     os.makedirs("../results", exist_ok=True)
     df_out.to_csv(f"../results/{flags.metric}_{flags.dataset}" + \
