@@ -53,8 +53,8 @@ metrics = {
     "VIF" : piq.VIFLoss(reduction='none'),
     "GMSD" : piq.GMSDLoss(reduction='none'),
     "FSIM" : piq.FSIMLoss(reduction='none'),
-    "CLIP_RN50" : CLIP_image_score("RN50"),
-    "CLIP_ViT-L/14" : CLIP_image_score("ViT-L/14")
+#    "CLIP_RN50" : CLIP_image_score("RN50"),
+#    "CLIP_ViT-L/14" : CLIP_image_score("ViT-L/14")
 }
 
 datasets = {
@@ -119,6 +119,7 @@ def main(flags):
             out = np.append(out, new_rows, axis = 0)
         else:
             out = new_rows
+
 
     df_out = pd.DataFrame(out.tolist(), columns=cols)
     assert(len(df_out) == 2931)
