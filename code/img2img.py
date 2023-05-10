@@ -151,8 +151,6 @@ def main(flags):
             out = np.append(out, new_rows, axis = 0)
         else:
             out = new_rows
-        
-        break
 
     df_out = pd.DataFrame(out.tolist(), columns=cols)
     print(len(df_out))
