@@ -8,62 +8,14 @@ from PIL import Image
 import numpy as np
 import pickle as pkl
 
-class FlickrDatasetMatching(Dataset):
-    def __init__(self, base_filepath, transform = None):
+class FlickrDataset(Dataset):
+    def __init__(
+            self, base_filepath, 
+            type = "annotated", transform = None, swap = False, generated_img_tag=''
+        ):
         self.transform = transform
-        annotation_filepath = os.path.join(base_filepath, "Flickr8k_text")
-        annotations = pd.read_csv(
-            os.path.join(annotation_filepath, "Flickr8k.token.txt"),
-            sep='\t',
-            header=None
-        )
-        self.annotations = dict(zip(annotations[0], annotations[1]))
-        self.img_folder = os.path.join(base_filepath, "Flicker8k_Dataset")
-        self.generated_img_folder = os.path.join(base_filepath, "generated_images")
-
-        expert = pd.read_csv(
-            os.path.join(annotation_filepath, "ExpertAnnotations.txt"),
-            sep='\t',
-            header=None
-        )
-        caption_ids = list(expert[1])
-        img_filepaths = [caption_id.split("#")[0] for caption_id in caption_ids]
-        
-        self.img_filepaths = img_filepaths
-        self.caption_ids = caption_ids
-
-    def __len__(self):
-        return len(self.img_filepaths)
-
-    def __getitem__(self, idx : int):
-        img_filepath = self.img_filepaths[idx]
-        caption_id = self.caption_ids[idx]
-        img = Image.open(os.path.join(self.img_folder, img_filepath))
-        if self.transform:
-            img = self.transform(img)
-        
-        generated_imgs = []
-        for i in range(3):
-            generated_img = Image.open(os.path.join(self.generated_img_folder, f"{caption_id}_{i}.png"))
-            if self.transform:
-                generated_img = self.transform(generated_img)
-            if len(generated_imgs):
-                generated_imgs = torch.concat(
-                    [
-                        generated_imgs, 
-                        generated_img.unsqueeze(0)
-                    ],
-                    dim = 0
-                )
-            else:
-                generated_imgs = generated_img.unsqueeze(0)
-        generated_imgs = generated_imgs
-        
-        return img_filepath, img, caption_id, generated_imgs
-
-class FlickrDatasetAnnotated(Dataset):
-    def __init__(self, base_filepath, transform = None, generated_img_tag=''):
-        self.transform = transform
+        self.type = type
+        self.swap = swap
         self.generated_img_tag = generated_img_tag
         annotation_filepath = os.path.join(base_filepath, "Flickr8k_text")
         expert = pd.read_csv(
@@ -98,9 +50,16 @@ class FlickrDatasetAnnotated(Dataset):
         # self.caption_ids = list(human_annotations[1])
         # self.human_scores = list(human_annotations[2])
         
-        self.img_filepaths = list(expert[0])
         self.caption_ids = list(expert[1])
         self.human_scores = list(expert['score'])
+
+        if self.type == 'annotated':
+            self.img_filepaths = list(expert[0])
+        elif self.type == 'matching':
+            self.img_filepaths = [caption_id.split("#")[0] for caption_id in self.caption_ids]
+        else:
+            print(f"{self.type} is invalid")
+            exit()
 
         with open("../data/splits.pkl", 'rb') as handle:
             splits = pkl.load(handle)
@@ -112,6 +71,12 @@ class FlickrDatasetAnnotated(Dataset):
 
     def __getitem__(self, idx : int):
         img_filepath = self.img_filepaths[idx]
+        if self.swap:
+            new_img_filepath = np.random.choice(self.img_filepaths)
+            while new_img_filepath == img_filepath:
+                new_img_filepath = np.random.choice(self.img_filepaths)
+            img_filepath = new_img_filepath
+        
         caption_id = self.caption_ids[idx]
         human_score = self.human_scores[idx]
         img = Image.open(os.path.join(self.img_folder, img_filepath))
@@ -139,4 +104,8 @@ class FlickrDatasetAnnotated(Dataset):
                 generated_imgs = torch.unsqueeze(generated_img, 0)
         generated_imgs = generated_imgs
         
-        return img_filepath, img, caption_id, human_score, generated_imgs
+        if self.type == 'annotated':
+            return img_filepath, img, caption_id, human_score, generated_imgs
+        else:
+            return img_filepath, img, caption_id, generated_imgs
+        

@@ -1,6 +1,6 @@
 import pickle as pkl
 from tqdm import tqdm
-from dataset import FlickrDatasetAnnotated, FlickrDatasetMatching
+from dataset import FlickrDataset
 from torchvision import transforms
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
@@ -55,17 +55,25 @@ metrics = {
     "CLIP_ViT-L-14" : CLIP_image_score("ViT-L/14")
 }
 
+# the shuffled suffix just means that the tokens of the caption are shuffled when generating the images 
 datasets = {
-    'matching' : FlickrDatasetMatching("../data"),
-    'annotated' : FlickrDatasetAnnotated("../data"),
-    'shuffled' : FlickrDatasetAnnotated("../data", generated_img_tag='_shuf')
+    # Matching captions to their original image, images generated from normal captions 
+    'matching' : FlickrDataset("../data", type="matching"), 
+    # Swapping captions so that they don't match with the original image, images generated from normal captions 
+    'matching_swapped' : FlickrDataset("../data", type="matching", swap = True),
+    # Matching captions to their original image, images generated from shuffled captions 
+    'matching_shuffled' : FlickrDataset("../data", type="matching", generated_img_tag='_shuf'), 
+    # Correlated with human preferences, images generated from normal captions 
+    'annotated' : FlickrDataset("../data", type="annotated"), 
+    # Correlated with human preferences, images generated from shuffled captions 
+    'annotated_shuffled' : FlickrDataset("../data", type="annotated", generated_img_tag='_shuf')
 }
 
 def main(flags):
     metric = metrics[flags.metric]
     dataset = datasets[flags.dataset]
 
-    if flags.metric == "CLIP_RN50" or flags.metric == "CLIP_ViT-L-14":
+    if flags.metric in ["CLIP_RN50", "CLIP_ViT-L-14"]:
         transform = metric.preprocess
     else:
         transform = transforms.Compose([
@@ -75,17 +83,33 @@ def main(flags):
         ])
     dataset.transform = transform
 
-    # create a new csv for each metric as a list  
-    cols = ['img_id', 'caption_id', 'human_scores', 'generated_image_id', f'{flags.metric}', f'internal_baseline_{flags.metric}']
+    # create a new csv for each metric as a list 
+    if flags.dataset in ['matching', 'matching_swapped', 'matching_shuffled']:
+        cols = [
+            'img_id', 
+            'caption_id', 
+            'generated_image_id', 
+            f'{flags.metric}', 
+            f'internal_baseline_{flags.metric}'
+        ]
+    else:
+        cols = [
+            'img_id', 
+            'caption_id', 
+            'human_scores', 
+            'generated_image_id', 
+            f'{flags.metric}', 
+            f'internal_baseline_{flags.metric}'
+        ]
     out = []
 
     dataloader = DataLoader(dataset, batch_size = bsz, shuffle=True)
     for collated_vals in tqdm(dataloader):
-        if flags.dataset == 'matching':
+        if flags.dataset in ['matching', 'matching_swapped', 'matching_shuffled']:
             (
                 img_filepaths, imgs, caption_ids, generated_imgs
             ) = collated_vals
-        elif flags.dataset in ['annotated', 'shuffled']:
+        elif flags.dataset in ['annotated', 'annotated_shuffled']:
             (
                 img_filepaths, imgs, caption_ids, human_scores, generated_imgs
             ) = collated_vals
@@ -107,27 +131,34 @@ def main(flags):
                 else:
                     generated_img_ids.append(caption_id + f'_{i}')
         
-        col0 = np.expand_dims(np.repeat(np.array(img_filepaths), 3), 1)
-        col1 = np.expand_dims(np.repeat(np.array(caption_ids), 3), 1)
-        col2 = np.expand_dims(np.repeat(np.array(human_scores), 3), 1)
-        col3 = np.expand_dims(generated_img_ids, 1)
-        col4 = scores.view(-1, 1).numpy()
-        col5 = np.expand_dims(np.repeat(np.array(base_score), 3), 1)
-        new_rows = np.concatenate([col0, col1, col2, col3, col4, col5], axis=1)
+        to_concat = []
+        # img_id
+        to_concat.append(np.expand_dims(np.repeat(np.array(img_filepaths), 3), 1))
+        # caption_id
+        to_concat.append(np.expand_dims(np.repeat(np.array(caption_ids), 3), 1))
+        # human scores
+        if flags.dataset in ['annotated', 'annotated_shuffled']:
+            to_concat.append(np.expand_dims(np.repeat(np.array(human_scores), 3), 1))
+        # generated_image_id
+        to_concat.append(np.expand_dims(generated_img_ids, 1))
+        # metric
+        to_concat.append(scores.view(-1, 1).numpy())
+        # internal_baseline
+        to_concat.append(np.expand_dims(np.repeat(np.array(base_score), 3), 1))
+        new_rows = np.concatenate(to_concat, axis=1)
 
         if len(out):
             out = np.append(out, new_rows, axis = 0)
         else:
             out = new_rows
-
+        
+        break
 
     df_out = pd.DataFrame(out.tolist(), columns=cols)
     print(len(df_out))
-    # assert(len(df_out) == 2931)
 
     os.makedirs("../results", exist_ok=True)
     df_out.to_csv(f"../results/{flags.metric}_{flags.dataset}" + \
-                  f"{'_shuf' if flags.dataset == 'shuffled' else ''}" + \
                   f"{'_noise' if flags.noise else ''}.csv", sep='\t')
 
 if __name__ == '__main__':
