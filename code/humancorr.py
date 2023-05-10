@@ -45,7 +45,7 @@ def plot_correlation(results, metric, dataset, noise=False):
     plt.scatter(x, y, alpha=0.2)
     plt.plot(x, line, color='red')
     plt.title(f"{metric} Correlation with Human Eval " + 
-              ("(Noised) " if noise else "") + f"(r={r}, p={p})")
+              ("(Noised) " if noise else "") + f"(τ={r}, p={p})")
     plt.xlabel("Human Evaluation")
     plt.ylabel(f"{metric}")
     
@@ -56,11 +56,22 @@ def plot_correlation(results, metric, dataset, noise=False):
     plt.savefig(save_name + ".png")
     plt.clf()
 
-    with open(save_name + ".txt", 'w') as f:
-        f.write(f"(r={r}, p={p})")
-
+    row = [metric, dataset, flags.reduce_method, noise, r, p]
+    if "taus.csv" not in os.listdir("../figures"):
+        df = pd.DataFrame([row], columns=["metric", "dataset", "reduce_method", "noise", "tau", "p"])
+    else:
+        df = pd.read_csv("../figures/taus.csv", index_col=0)
+        df.loc[len(df.index)] = row
+    df.to_csv("../figures/taus.csv")
+    
+    with open(save_name + ".txt", 'w+') as f:
+        f.write(save_name + f" (τ={r}, p={p})")
 
 def main(flags):
+    try: 
+        os.remove("../figures/taus.csv")
+    except OSError:
+        pass 
     for dataset in datasets.keys():
         for metric in metrics.keys():
             # read in results for metric on given dataset
