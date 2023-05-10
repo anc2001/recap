@@ -83,26 +83,35 @@ class FlickrDataset(Dataset):
         if self.transform:
             img = self.transform(img)
         
-        generated_imgs = []
-        for i in range(3):
-            generated_img = Image.open(
-                os.path.join(
-                    self.generated_img_folder, f"{caption_id}{self.generated_img_tag}_{i}.png"
+        if self.transform:
+            generated_imgs = []
+            for i in range(3):
+                generated_img = Image.open(
+                    os.path.join(
+                        self.generated_img_folder, f"{caption_id}{self.generated_img_tag}_{i}.png"
+                    )
                 )
-            )
-            if self.transform:
                 generated_img = self.transform(generated_img)
-            if len(generated_imgs):
-                generated_imgs = torch.concat(
-                    [
-                        generated_imgs, 
-                        torch.unsqueeze(generated_img, 0)
-                    ],
-                    dim = 0
+
+                if len(generated_imgs):
+                    generated_imgs = torch.concat(
+                        [
+                            generated_imgs, 
+                            torch.unsqueeze(generated_img, 0)
+                        ],
+                        dim = 0
+                    )
+                else:
+                    generated_imgs = torch.unsqueeze(generated_img, 0)
+        else:
+            generated_imgs = []
+            for i in range(3):
+                generated_img = Image.open(
+                    os.path.join(
+                        self.generated_img_folder, f"{caption_id}{self.generated_img_tag}_{i}.png"
+                    )
                 )
-            else:
-                generated_imgs = torch.unsqueeze(generated_img, 0)
-        generated_imgs = generated_imgs
+                generated_imgs.append(generated_img)
         
         if self.type == 'annotated':
             return img_filepath, img, caption_id, human_score, generated_imgs
