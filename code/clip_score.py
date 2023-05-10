@@ -22,4 +22,4 @@ class CLIP_image_score():
         real_image_features /= real_image_features.norm(dim=-1, keepdim=True)
         fake_image_features /= fake_image_features.norm(dim=-1, keepdim=True)
         
-        return torch.einsum('bd,bd->b', real_image_features, fake_image_features)
+        return torch.einsum('bd,bd->b', real_image_features, fake_image_features).cpu()

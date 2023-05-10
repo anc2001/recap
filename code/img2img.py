@@ -13,7 +13,7 @@ import os
 import numpy as np
 from clip_score import CLIP_image_score
 
-bsz = 16
+bsz = 64
 num_generated_imgs = 3
 
 def evaluate_metric(metric, imgs, generated_imgs):
@@ -51,8 +51,8 @@ metrics = {
     "VIF" : piq.VIFLoss(reduction='none'),
     "GMSD" : piq.GMSDLoss(reduction='none'),
     "FSIM" : piq.FSIMLoss(reduction='none'),
-#    "CLIP_RN50" : CLIP_image_score("RN50"),
-#    "CLIP_ViT-L/14" : CLIP_image_score("ViT-L/14")
+    "CLIP_RN50" : CLIP_image_score("RN50"),
+    "CLIP_ViT-L-14" : CLIP_image_score("ViT-L/14")
 }
 
 datasets = {
@@ -65,7 +65,7 @@ def main(flags):
     metric = metrics[flags.metric]
     dataset = datasets[flags.dataset]
 
-    if flags.metric == "CLIP_RN50" or flags.metric == "CLIP_ViT-L/14":
+    if flags.metric == "CLIP_RN50" or flags.metric == "CLIP_ViT-L-14":
         transform = metric.preprocess
     else:
         transform = transforms.Compose([

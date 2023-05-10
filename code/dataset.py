@@ -64,6 +64,7 @@ class FlickrDatasetMatching(Dataset):
 class FlickrDatasetAnnotated(Dataset):
     def __init__(self, base_filepath, transform = None, generated_img_tag=''):
         self.transform = transform
+        self.generated_img_tag = generated_img_tag
         annotation_filepath = os.path.join(base_filepath, "Flickr8k_text")
         expert = pd.read_csv(
             os.path.join(annotation_filepath, "ExpertAnnotations.txt"),
@@ -119,7 +120,11 @@ class FlickrDatasetAnnotated(Dataset):
         
         generated_imgs = []
         for i in range(3):
-            generated_img = Image.open(os.path.join(self.generated_img_folder, f"{caption_id}_{i}.png"))
+            generated_img = Image.open(
+                os.path.join(
+                    self.generated_img_folder, f"{caption_id}{self.generated_img_tag}_{i}.png"
+                )
+            )
             if self.transform:
                 generated_img = self.transform(generated_img)
             if len(generated_imgs):
