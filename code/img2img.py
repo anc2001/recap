@@ -51,8 +51,8 @@ metrics = {
     "VIF" : piq.VIFLoss(reduction='none'),
     "GMSD" : piq.GMSDLoss(reduction='none'),
     "FSIM" : piq.FSIMLoss(reduction='none'),
-#    "CLIP_RN50" : CLIP_image_score("RN50"),
-#    "CLIP_ViT-L/14" : CLIP_image_score("ViT-L/14")
+    "CLIP_RN50": CLIP_image_score("RN50"),
+    "CLIP_ViT-L-14" : CLIP_image_score("ViT-L/14")
 }
 
 datasets = {
