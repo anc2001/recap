@@ -12,6 +12,8 @@ import pandas as pd
 import numpy as np
 import random
 import copy
+from matplotlib import pyplot as plt
+import pdb
 
 os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
@@ -453,6 +455,83 @@ def compute_all_latent_reconstruction_scores(image_dataloader, clipcap_model, se
             
 
 
+def compute_all_latent_reconstruction_scores_pca(image_dataloader, clipcap_model, self_attention, experiment='test'):
+
+
+    device = torch.device('cuda:6')
+
+    clipcap_model.to(device)
+    clipcap_model.eval()
+
+    self_attention.to(device)
+    self_attention.eval()
+
+    for idx, (image_filenames, captions, image_embeddings, tokenized_captions, modified) in enumerate(image_dataloader):
+    
+        print('Processing image {} of {}'.format(idx+1, len(image_dataloader)))
+
+        image_embeddings, tokenized_captions = image_embeddings.to(device), tokenized_captions.to(device)
+
+        with torch.no_grad():
+            # first pass caption and image embedding through pretrained clipcap model and GPT2 encoder
+            prefix_projections, embedded_captions = clipcap_model(tokenized_captions, image_embeddings)
+
+            prefix_projections, embedded_captions = prefix_projections.to(device), embedded_captions.to(device)
+            
+            #reconstruct the image embedding in text space i.e. prefix projection
+            reconstructed_image_embeddings = self_attention(embedded_captions)
+
+        
+            reduced_reconstructed_embeddings,_,_ = torch.pca_lowrank(reconstructed_image_embeddings, center=True, q=30, niter=15)
+
+
+            reduced_gt_embeddings,_,_ = torch.pca_lowrank(prefix_projections, center=True, q=30, niter=15)
+
+            
+            temp1 = self_attention.mse_loss(reconstructed_image_embeddings[:10,:], prefix_projections[:10,:])
+
+            mean_losses, sum_losses = self_attention.compute_metric(temp1)
+            print(mean_losses)
+
+            temp2 = self_attention.mse_loss(reconstructed_image_embeddings[50:60,:], prefix_projections[50:60,:])
+
+            mean_losses, sum_losses = self_attention.compute_metric(temp2)
+            print(mean_losses)
+
+            print(captions[:10])
+            print(captions[50:60])
+
+            plt.matshow(reduced_reconstructed_embeddings[:10,:].cpu().numpy()/np.max(reduced_reconstructed_embeddings[:10,:].cpu().numpy()), cmap='viridis')
+            
+            plt.savefig('./normal_embedding.png')
+            plt.cla()
+            plt.clf()
+
+
+            plt.matshow(reduced_reconstructed_embeddings[40:50,:].cpu().numpy()/np.max(reduced_reconstructed_embeddings[40:50,:].cpu().numpy()), cmap='viridis')
+            
+            plt.savefig('./other_embedding.png')
+            plt.cla()
+            plt.clf()
+
+
+            plt.matshow(reduced_reconstructed_embeddings[50:60,:].cpu().numpy()/np.max(reduced_reconstructed_embeddings[50:60,:].cpu().numpy()), cmap='viridis')
+            
+            plt.savefig('./shuffled_embedding.png')
+            plt.cla()
+            plt.clf()
+
+
+            
+
+            plt.matshow(reduced_gt_embeddings[:10,:].cpu().numpy()/np.max(reduced_gt_embeddings[:10,:].cpu().numpy()), cmap='viridis')
+            plt.savefig('./gt_embedding.png')
+            plt.cla()
+            plt.clf()
+
+            pdb.set_trace()
+        
+
 
 def compute_all_latent_reconstruction_scores_human(image_dataloader, clipcap_model, self_attention):
 
@@ -496,7 +575,7 @@ def compute_all_latent_reconstruction_scores_human(image_dataloader, clipcap_mod
         all_sum_latent_scores += sum_losses
 
     
-    import pdb
+    
     pdb.set_trace()
 
     latent_df['mean_score'] = all_mean_latent_scores
@@ -556,8 +635,10 @@ def run_pathological_captions_test():
     shuffle = False
     percent_shuffled_captions = 0.90
 
-    swap = True
+    swap = False
     percent_swapped_captions = 0.90
+
+    test_pca = True
 
     if shuffle:
 
@@ -614,6 +695,45 @@ def run_pathological_captions_test():
         for image in test_image_set:
             test_captions += caption_dictionary[image]
             modified += [0]*5
+    
+    if test_pca:
+        pca_examples = random.sample(list(caption_dictionary.keys()), k=50)
+
+        caption_dict_shuffled = copy.deepcopy(caption_dictionary)
+
+        for f in pca_examples:
+            caption_dict_shuffled[f] = [ ' '.join(random.sample( c.split(' '), len(c.split(' ')) )) for c in caption_dict_shuffled[f]]
+        
+        normal_test_captions = []
+        modified_normal = []
+
+        for image in pca_examples:
+            normal_test_captions.append(caption_dictionary[image][0])
+            modified_normal += [0]
+        
+        modified_test_captions = []
+        modified_modified = []
+
+        for image in pca_examples:
+            modified_test_captions.append(caption_dict_shuffled[image][0])
+            modified_modified += [0]
+        
+
+        pca_test_images = pca_examples + pca_examples
+        pca_test_captions = normal_test_captions + modified_test_captions
+
+        modified = modified_normal + modified_modified
+        
+        dataset = FlickrDatasetPathological(pca_test_images, pca_test_captions, modified)
+        image_dataloader = torch.utils.data.DataLoader(dataset, batch_size=100)
+
+        compute_all_latent_reconstruction_scores_pca(image_dataloader, clipcap_model, self_attention, experiment='flickr8k_pca')
+        
+
+
+        
+
+
 
     print('Num Modified: ', np.sum(modified))
     import pdb
@@ -623,11 +743,11 @@ def run_pathological_captions_test():
     image_dataloader = torch.utils.data.DataLoader(dataset, batch_size=50)
 
     
-    if shuffle:
+    if shuffle and not test_pca:
         avg_mean_score, avg_sum_score = compute_all_latent_reconstruction_scores(image_dataloader, clipcap_model, self_attention, experiment='flickr8k_shuffled_{}'.format(int(percent_shuffled_captions*100)))
-    elif swap:
+    elif swap and not test_pca:
         avg_mean_score, avg_sum_score = compute_all_latent_reconstruction_scores(image_dataloader, clipcap_model, self_attention, experiment='flickr8k_other_images_{}'.format(int(percent_shuffled_captions*100)))
-    else:
+    elif not test_pca:
         avg_mean_score, avg_sum_score = compute_all_latent_reconstruction_scores(image_dataloader, clipcap_model, self_attention, experiment='flickr8k')
 
     print('Average Mean Score: ', avg_mean_score)
@@ -699,4 +819,4 @@ def run_human_preferences_test():
 
 
 if __name__ == '__main__':
-    run_human_preferences_test()
+    run_pathological_captions_test()
